@@ -1,0 +1,21 @@
+# Java / Spring
+*.class
+*.log
+target/
+build/
+*.jar
+*.war
+*.iml
+.idea/
+.settings/
+.vscode/
+
+# Node / JS (caso use)
+node_modules/
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# Variáveis de ambiente
+.env

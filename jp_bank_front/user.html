@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minha Conta - JP Bank</title>
+    <link rel="stylesheet" href="styles/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cardo:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div class="user-page">
+        <div class="user-menu">
+            <div>
+                <div class="user-menu-top">
+                    <img src="utilities/images/logo_extendida.png" alt="">
+                </div>
+                <button class="user-menu-button" data-page="dashboard">Dashboard</button>
+                <button class="user-menu-button" data-page="transfer">Transfer</button>
+                <button class="user-menu-button" data-page="extrato">Extrato</button>
+                <button class="user-menu-button" data-page="cambio">Câmbio</button>
+            </div>
+            <div>
+                <button class="user-menu-button" data-page="userinfo">User info</button>
+                <button class="user-menu-button" onclick="logout()">Logout</button>
+            </div>
+        </div>
+        <div class="user-dashboard" id="dashboard-content">
+            <div class="user-dashboard-top">
+                <h2>Dashboard</h2>
+                <h2 id="name" class="user-dashboard-top-name"></h2>
+            </div>
+            <div class="user-dashboard-balance">
+                <p>Saldo</p>
+                <p class="user-dashboard-balance-money">R$<span id="balance"></span></p>
+            </div>
+            <div class="transactions-container">
+                <h3>Últimas transações</h3>
+                <table id="transactions-table">
+                    <thead>
+                        <tr>
+                            <th>Status</th>
+                            <th>Descrição</th>
+                            <th>Valor</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transactions-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+
+    <script src="js/auth.js"></script>
+    <script>
+        async function loadUser() {
+            const res = await authFetch(API_BASE + "/user/me");
+
+            if(res.status === 401) {
+                alert("Seessão expirada! Faça login novamente");
+                logout();
+                return;
+            }
+
+            const data = await res.json();
+
+            document.getElementById("name").textContent = data.name;
+            document.getElementById("balance").textContent = Number(data.balance).toFixed(2);
+
+            loadTransactions(data.id);
+        }
+
+        async function loadTransactions(userId) {
+            const res = await authFetch(`${API_BASE}/api/transactions/user/${userId}`);
+            const transactions = await res.json();
+
+            const lastestFive = transactions.slice(0, 5);
+
+            const tbody = document.getElementById("transactions-body");
+            tbody.innerHTML = "";
+
+            lastestFive.forEach(tx => {
+                const tr = document.createElement("tr");
+
+                const statusColor = tx.type == "CREDIT" ? "green" : "red";
+
+                const value = tx.type === "DEBIT" ? Number(tx.amount)* -1 : Number(tx.amount);
+
+                tr.innerHTML = `
+                    <td>
+                        <span style = "height: 12px; width: 12px; background-color: ${statusColor}; border-radius:50%; display: inline-block;">
+                        </span>
+                    </td>
+                    <td>
+                        <strong>${tx.description}</strong><br>
+                        <small>${new Date(tx.createdAt).toLocaleString()}</small>
+                    </td>
+                    <td>
+                        ${value < 0 ? "-" : ""} R$ ${Math.abs(value).toFixed(2)}
+                    </td>
+                `;
+
+                tbody.appendChild(tr);
+            });
+        }
+    </script>
+    <script>
+        const content = document.getElementById("dashboard-content");
+
+        const pages = {
+
+            dashboard: `
+                <div class="user-dashboard-top">
+                    <h2>Dashboard</h2>
+                    <h2 id="name" class="user-dashboard-top-name"></h2>
+                </div>
+                <div class="user-dashboard-balance">
+                    <p>Saldo</p>
+                    <p class="user-dashboard-balance-money">R$ <span id="balance"></span></p>
+                </div>
+                <div class="transactions-container">
+                    <h3>Últimas transações</h3>
+                    <table id="transactions-table">
+                        <thead>
+                            <tr>
+                                <th>Status</th>
+                                <th>Descrição</th>
+                                <th>Valor</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactions-body"></tbody>
+                    </table>
+                </div>
+            `,
+
+            transfer: `
+                <h2>Transferir</h2>
+                <p>Enviar dinheiro para outra conta</p>
+
+                <input type="text" id="transfer-target" placeholder="Conta destino">
+                <input type="number" id="transfer-value" placeholder="Valor">
+                <button onclick="sendTransfer()">Enviar</button>
+            `,
+
+            extrato: `
+                <h2>Extrato Completo</h2>
+                <p>Aqui ficará o extrato completo do usuário.</p>
+            `,
+
+            userinfo: `
+                <h2>Informações do usuário</h2>
+                <p><strong>Nome:</strong> <span id="name-info"></span></p>
+                <p><strong>E-mail:</strong> <span id="email-info"></span></p>
+                <p><strong>CPF:</strong> <span id="cpf-info"></span></p>
+            `,
+
+            cambio: `
+                <h2>Câmbio</h2>
+                <p>Selecione uma moeda para ver a cotação atual:</p>
+
+                <div id="currency-list"></div>
+
+                <div id="currency-details" style="margin-top:20px;"></div>
+            `
+        };
+
+        document.querySelectorAll(".user-menu-button[data-page]").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const page = btn.dataset.page;
+
+                content.innerHTML = pages[page];
+
+                if (page === "dashboard") {
+                    loadUser();
+                }
+
+                if (page === "userinfo") {
+                    loadUserInfo();
+                }
+
+                if(page === "cambio") {
+                    loadCurrencyList();
+                }
+            });
+        });
+
+        function loadUserInfo() {
+            authFetch(API_BASE + "/user/me")
+                .then(res => res.json())
+                .then(user => {
+                    document.getElementById("name-info").textContent = user.name;
+                    document.getElementById("email-info").textContent = user.email;
+                    document.getElementById("cpf-info").textContent = user.cpf;
+                });
+        }
+
+        content.innerHTML = pages.dashboard;
+        loadUser();
+        
+    </script>
+    <script>
+        const supportedCurrencies = ["USD", "EUR", "GBP", "ARS", "JPY"];
+
+        function loadCurrencyList() {
+            const list = document.getElementById("currency-list");
+            list.innerHTML = "";
+
+            supportedCurrencies.forEach(code => {
+                const btn = document.createElement("button");
+                btn.textContent = code;
+                btn.classList.add("currency-btn");
+                btn.onclick = () => showCurrencyDetails(code);
+                list.appendChild(btn);
+            });
+        }
+
+        let intervalId = null;
+
+        async function showCurrencyDetails(code) {
+
+            const details = document.getElementById("currency-details");
+            details.innerHTML = `<p>Carregando cotação de ${code}...</p>`;
+
+            async function fetchPrice() {
+                const res = await fetch(`https://economia.awesomeapi.com.br/json/last/${code}-BRL`);
+                const data = await res.json();
+                const key = code + "BRL";
+                const price = Number(data[key].bid);
+
+                details.innerHTML=`
+                    <h3>${code} -> BRL</h3>
+                    <p><strong>Valor atual:</strong> R$ ${price.toFixed(2)}</p>
+                    <button onclick="startPurchase('${code}', ${price})">Comprar</button>
+                `; 
+            }
+
+            fetchPrice();
+
+            clearInterval(intervalId);
+            intervalId = setInterval(fetchPrice, 10000);
+        }
+        
+        function startPurchase(code, lockedPrice) {
+            const quantity = prompt(`Preço travado: R$ ${lockedPrice.toFixed(2)}\n\nQuantas unidades de ${code} você deseja comprar?`);
+            if(!quantity || Number(quantity) <= 0) return;
+
+            const password = prompt("Digite sua senha para confirmar a compra:");
+            if(!password) return;
+
+            validatePassword(password)
+                .then(isValid => {
+                    if(!isValid) {
+                        alert("Senha incorreta!");
+                        return;
+                    }
+
+                    return sendPurchase(code, lockedPrice, quantity);
+                })
+                .then(() => {
+                    alert("Compra realizada com sucesso!");
+                })
+                .catch(err => console.log(err));
+        }
+
+        async function validatePassword(password) {
+            const res = await authFetch(API_BASE + "/user/verify-password", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({ password })
+            });
+
+            if (res.status !== 200) return false;
+            return (await res.json()).valid;
+        }
+
+        async function sendPurchase(code, price, quantity) {
+            return authFetch(API_BASE + "/exchange/buy", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    currency: code,
+                    priceInBRL: price,
+                    amount: Number(quantity)
+                })
+            });
+        }
+    </script>
+</body>
+</html>

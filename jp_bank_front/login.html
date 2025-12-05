@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - JP Bank</title>
+    <link rel="stylesheet" href="styles/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cardo:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="login-page">
+        <div class="image-login">
+            <img src="utilities/images/bank.png" alt="">
+        </div>
+        <div class="login">
+            <h2>Entre na sua conta</h2>
+
+            <input type="email" name="email" id="email" placeholder="Email">
+            <input type="password" name="password" id="password" placeholder="Senha">
+
+            <button onclick="login()">Entrar</button>
+
+            <p>Ainda não tem uma conta? <a href="register.html">Criar conta</a></p>
+        </div>
+    </div>
+    
+    <script src="js/auth.js"></script>
+    <script>
+        async function login() {
+            const email = document.getElementById("email").value;
+            const password = document.getElementById("password").value;
+
+            try {
+                const res = await fetch("http://localhost:8080/auth/login", {
+                    method: "POST",
+                    headers: {"Content-Type" : "application/json"},
+                    body: JSON.stringify({
+                        "email": email,
+                        "password": password
+                    })
+                });
+
+                if (!res.ok) {
+                    alert("Email ou senha inválidos!");
+                    return;
+                }
+
+                const data = await res.json();
+                saveToken(data.token);
+
+                window.location.href = "user.html";
+            } catch (error) {
+                console.error(error);
+                alert("Erro no login");
+            }
+            
+        }
+    </script>
+</body>
+</html>
