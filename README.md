@@ -1,5 +1,5 @@
 # jp_bank
-Sistema que tem o objetivo de simulas o funcionamento de um banco.
+Sistema que tem o objetivo de simulas o funcionamento de um banco. Para rodar a aplicação é necessário ter o java, maven e algum sistema de banco de dados relacional instalado, no caso do programa, o que está sendo utilizado é o mySQL. Além disso, também sera necessário atualizar no application.properties (em src/main/resources/resources) as informações referêntes ao endereço, usuário e senha do banco de dados.
 No momento, ele é composto por duas pastas principais:
 - jp_bank_back: Pasta com o aplicativo Spring responsável pelo backend.
 - jp_bank_front: Pasta com os arquivos html, css e javascripts. No momento ainda é bem provisória.
