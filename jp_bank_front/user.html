@@ -19,6 +19,8 @@
                 <button class="user-menu-button" data-page="transfer">Transfer</button>
                 <button class="user-menu-button" data-page="extrato">Extrato</button>
                 <button class="user-menu-button" data-page="cambio">Câmbio</button>
+                <button class="user-menu-button" data-page="cards">Cartões</button>
+
             </div>
             <div>
                 <button class="user-menu-button" data-page="userinfo">User info</button>
@@ -39,9 +41,10 @@
                 <table id="transactions-table">
                     <thead>
                         <tr>
-                            <th>Status</th>
+                            <th></th>
                             <th>Descrição</th>
                             <th>Valor</th>
+                            <th>Status</th>
                         </tr>
                     </thead>
                     <tbody id="transactions-body"></tbody>
@@ -53,6 +56,9 @@
 
     <script src="js/auth.js"></script>
     <script>
+
+        let currentUserId = null;
+
         async function loadUser() {
             const res = await authFetch(API_BASE + "/user/me");
 
@@ -64,6 +70,8 @@
 
             const data = await res.json();
 
+            currentUserId = data.id;
+
             document.getElementById("name").textContent = data.name;
             document.getElementById("balance").textContent = Number(data.balance).toFixed(2);
 
@@ -74,7 +82,7 @@
             const res = await authFetch(`${API_BASE}/api/transactions/user/${userId}`);
             const transactions = await res.json();
 
-            const lastestFive = transactions.slice(0, 5);
+            const lastestFive = transactions.slice(-5).reverse();
 
             const tbody = document.getElementById("transactions-body");
             tbody.innerHTML = "";
@@ -82,9 +90,9 @@
             lastestFive.forEach(tx => {
                 const tr = document.createElement("tr");
 
-                const statusColor = tx.type == "CREDIT" ? "green" : "red";
+                const statusColor = tx.movementType == "CREDIT" ? "green" : "red";
 
-                const value = tx.type === "DEBIT" ? Number(tx.amount)* -1 : Number(tx.amount);
+                const value = tx.movementType === "DEBIT" ? Number(tx.amount)* -1 : Number(tx.amount);
 
                 tr.innerHTML = `
                     <td>
@@ -97,6 +105,11 @@
                     </td>
                     <td>
                         ${value < 0 ? "-" : ""} R$ ${Math.abs(value).toFixed(2)}
+                    </td>
+                    <td>
+                        <span style="color: ${tx.status === 'SUCCESS' ? 'green' : 'red'};">
+                            ${tx.status}
+                        </span>
                     </td>
                 `;
 
@@ -123,9 +136,10 @@
                     <table id="transactions-table">
                         <thead>
                             <tr>
-                                <th>Status</th>
+                                <th></th>
                                 <th>Descrição</th>
                                 <th>Valor</th>
+                                <th>Status</th>
                             </tr>
                         </thead>
                         <tbody id="transactions-body"></tbody>
@@ -137,14 +151,31 @@
                 <h2>Transferir</h2>
                 <p>Enviar dinheiro para outra conta</p>
 
-                <input type="text" id="transfer-target" placeholder="Conta destino">
+                <input type="text" id="transfer-agency" placeholder="Agência destino">
+                <input type="text" id="transfer-account" placeholder="Conta destino">
                 <input type="number" id="transfer-value" placeholder="Valor">
+
+                <input type="text" id="transfer-description" placeholder="Descrição (opcional)">
+
                 <button onclick="sendTransfer()">Enviar</button>
             `,
 
             extrato: `
                 <h2>Extrato Completo</h2>
-                <p>Aqui ficará o extrato completo do usuário.</p>
+
+                <div class="transactions-container">
+                    <table id="extrato-table">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th>Descrição</th>
+                                <th>Valor</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="extrato-body"></tbody>
+                    </table>
+                </div>
             `,
 
             userinfo: `
@@ -161,7 +192,43 @@
                 <div id="currency-list"></div>
 
                 <div id="currency-details" style="margin-top:20px;"></div>
+            `,
+
+            cards: `
+                <div class="cards-page">
+
+                    <aside class="cards-left">
+                        <section class="invoice-box">
+                            <h3>Fatura atual</h3>
+                            <p id="invoice-value">Carregando...</p>
+                            <button id="pay-invoice-btn" disabled>Pagar fatura</button>
+                        </section>
+
+                        <section class="credit-transactions">
+                            <h4>Últimos gastos</h4>
+                            <table class="credit-table">
+                                <thead>
+                                    <tr>
+                                        <th>Descrição</th>
+                                        <th>Cartão</th>
+                                        <th>Parcelas</th>
+                                        <th>Data</th>
+                                        <th>Valor</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="credit-transactions-body"></tbody>
+                            </table>
+                        </section>
+                    </aside>
+
+                    <section class="cards-right">
+                        <h3>Meus cartões</h3>
+                        <div id="cards-list"></div>
+                    </section>
+
+                </div>
             `
+
         };
 
         document.querySelectorAll(".user-menu-button[data-page]").forEach(btn => {
@@ -180,6 +247,16 @@
 
                 if(page === "cambio") {
                     loadCurrencyList();
+                }
+
+                if(page === "extrato") {
+                    loadFullStatement(currentUserId);
+                }
+
+                if(page === "cards") {
+                    loadCards();
+                    loadInvoice();
+                    loadCreditTransactions();
                 }
             });
         });
@@ -282,6 +359,224 @@
                     priceInBRL: price,
                     amount: Number(quantity)
                 })
+            });
+        }
+    </script>
+    <script>
+        async function loadCards() {
+            const res = await authFetch(API_BASE + "/creditcard/usercards");
+            const cards = await res.json();
+
+            const container = document.getElementById("cards-list");
+            container.innerHTML = "";
+
+            console.log(cards);
+
+            cards.forEach(card => {
+                const div = document.createElement("div");
+                div.className = "card-item";
+                div.innerHTML = `
+                    <strong>${card.nickname}</strong>
+                    <div class="card-details">
+                        <div class="card-visual">
+                            <p>${card.cardNumber}</p>
+                            <p>Val: ${card.expiry}</p>
+                            <p>CVV: ${card.cvv}</p>
+                        </div>
+                    </div>
+                `;
+
+                div.onclick = () => {
+                    const details = div.querySelector(".card-details");
+                    details.style.display =
+                        details.style.display === "block" ? "none" : "block";
+                };
+
+                container.appendChild(div);
+            });
+        }
+
+        async function loadInvoice() {
+            const valueEl = document.getElementById("invoice-value");
+            const btnInvoice  = document.getElementById("pay-invoice-btn");
+
+            btnInvoice.style.display = "none";
+            btnInvoice.disabled = true;
+
+            const res = await authFetch(API_BASE + "/creditcard/invoice");
+
+            if (res.status === 200) {
+                const invoice = await res.json();
+
+                valueEl.textContent = "R$ " + invoice.totalAmount.toFixed(2);
+
+                btnInvoice.style.display = "block";
+                btnInvoice.disabled = false;
+                btnInvoice.textContent = "Pagar fatura";
+                btnInvoice.onclick = () => payInvoice(invoice.invoiceId);
+
+                return;
+            }
+
+            if(res.status === 204 || res.status === 400) {
+                const openRes = await authFetch(API_BASE + "/creditcard/invoiceNotClosed");
+
+                if (openRes.status !== 200) {
+                    valueEl.textContent = "Sem fatura";
+                    return;
+                }
+
+                const amount = await openRes.json();
+
+                if (!amount || Number(amount) === 0) {
+                    valueEl.textContent = "Sem fatura";
+                    return;
+                }
+
+                valueEl.textContent = "R$ " + Number(amount).toFixed(2);
+
+                btnInvoice.style.display = "block";
+                btnInvoice.disabled = true;
+                btnInvoice.textContent = "Fatura ainda não fechada";
+            }
+        }
+
+        async function payInvoice(cardId) {
+            const password = prompt("Digite sua senha para confirmar:");
+            if (!password) return;
+
+            const valid = await validatePassword(password);
+            if (!valid) {
+                alert("Senha incorreta");
+                return;
+            }
+
+            await authFetch(API_BASE + "/credit-cards/pay-invoice", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({ cardId })
+            });
+
+            alert("Fatura paga com sucesso");
+            loadInvoice();
+        }
+
+        async function loadCreditTransactions() {
+            const res = await authFetch(API_BASE + "/creditcard/purchases");
+            const purchases = await res.json();
+
+            const tbody = document.getElementById("credit-transactions-body");
+            tbody.innerHTML = "";
+
+            const ordered = [...purchases].reverse();
+
+            ordered.forEach(p => {
+                const tr = document.createElement("tr");
+
+                const installmentValue = p.totalAmount / p.totalInstallments;
+
+                tr.innerHTML = `
+                    <td>
+                        <strong>${p.description}</strong>
+                    </td>
+                    <td>${p.cardNickname}</td>
+                    <td>
+                        ${p.totalInstallments}x<br>
+                        <small>R$ ${installmentValue.toFixed(2)}</small>
+                    </td>
+                    <td>${new Date(p.purchaseDate).toLocaleDateString()}</td>
+                    <td><strong>R$ ${p.totalAmount.toFixed(2)}</strong></td>
+                `;
+
+                tbody.appendChild(tr);
+            });
+        }
+
+    </script>
+    <script>
+        async function sendTransfer() {
+            const agency = document.getElementById("transfer-agency").value.trim();
+            const account = document.getElementById("transfer-account").value.trim();
+            const value = document.getElementById("transfer-value").value;
+            const descriptionInput = document.getElementById("transfer-description").value.trim();
+
+            if (!agency || !account || !value || Number(value) <= 0) {
+                alert("Preencha todos os campos corretamente.");
+                return;
+            }
+
+            const password = prompt("Digite sua senha para confirmar a transferência:");
+            if (!password) return;
+
+            const isValid = await validatePassword(password);
+            if (!isValid) {
+                alert("Senha incorreta!");
+                return;
+            }
+
+            const description = descriptionInput !== ""
+                ? descriptionInput
+                : `Transferência para agência ${agency} conta ${account}`;
+
+            const res = await authFetch(API_BASE + "/internal-transfer", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    type: "INTERNAL_TRANSFER",
+                    amount: Number(value),
+                    description: description,
+                    receiverAgencyNumber: agency,
+                    receiverAccountNumber: account,
+                    metadata: ""
+                })
+            });
+
+            if (!res.ok) {
+                const msg = await res.text();
+                alert("Erro ao realizar transferência: " + msg);
+                return;
+            }
+
+            alert("Transferência realizada com sucesso!");
+        }
+    </script>
+    <script>
+        async function loadFullStatement(userId) {
+            const res = await authFetch(`${API_BASE}/api/transactions/user/${userId}`);
+            const transactions = await res.json();
+
+            const ordered = transactions.reverse();
+
+            const tbody = document.getElementById("extrato-body");
+            tbody.innerHTML = "";
+            
+            ordered.forEach(tx => {
+                const tr = document.createElement("tr");
+
+                const statusColor = tx.movementType == "CREDIT" ? "green" : "red";
+
+                const value = tx.movementType === "DEBIT" ? Number(tx.amount)* -1 : Number(tx.amount);
+
+                tr.innerHTML = `
+                    <td>
+                        <span style = "height: 12px; width: 12px; background-color: ${statusColor}; border-radius:50%; display: inline-block;">
+                        </span>
+                    </td>
+                    <td>
+                        <strong>${tx.description}</strong><br>
+                        <small>${new Date(tx.createdAt).toLocaleString()}</small>
+                    </td>
+                    <td>
+                        ${value < 0 ? "-" : ""} R$ ${Math.abs(value).toFixed(2)}
+                    </td>
+                    <td>
+                        <span style="color: ${tx.status === 'SUCCESS' ? 'green' : 'red'};">
+                            ${tx.status}
+                        </span>
+                    </td>
+                `;
+
+                tbody.appendChild(tr);
             });
         }
     </script>

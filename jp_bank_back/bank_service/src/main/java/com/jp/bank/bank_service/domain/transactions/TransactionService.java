@@ -10,6 +10,7 @@ import com.jp.bank.bank_service.auth.TokenService;
 import com.jp.bank.bank_service.domain.transactions.dto.CreateTransactionDTO;
 import com.jp.bank.bank_service.domain.transactions.dto.TransactionMovementDTO;
 import com.jp.bank.bank_service.domain.transactions.dto.TransactionResponseDTO;
+import com.jp.bank.bank_service.domain.transactions.dto.UserTransactionResponseDTO;
 import com.jp.bank.bank_service.domain.user.BankUser;
 import com.jp.bank.bank_service.domain.user.BankUserService;
 
@@ -100,8 +101,28 @@ public class TransactionService {
         return toDTO(transaction);
     }
 
-    public List<TransactionResponseDTO> getByUser(Long userId) {
-        return transactionRepository.findByMovementsUserBankId(userId).stream().map(this::toDTO).collect(Collectors.toList());
+    public List<UserTransactionResponseDTO> getByUser(Long userId) {
+        return transactionRepository.findByMovementsUserBankId(userId).stream().map(transaction -> toUserTransactionDTO(transaction, userId)).collect(Collectors.toList());
+    }
+
+    private UserTransactionResponseDTO toUserTransactionDTO(Transaction transaction, Long userId) {
+
+        TransactionMovement userMovement = transaction.getMovements()
+            .stream()
+            .filter(m -> m.getUser().getBankId().equals(userId))
+            .findFirst()
+            .orElseThrow(() -> new RuntimeException("Movimento do usuário não encontrado na transação"));
+
+        return new UserTransactionResponseDTO(
+            transaction.getTransactionId(),
+            transaction.getType(),
+            transaction.getStatus(),
+            transaction.getAmount(),
+            transaction.getDescription(),
+            transaction.getCreatedAt(),
+            userMovement.getTransactionMovementId(),
+            userMovement.getMovementType()
+        );
     }
 
     private TransactionResponseDTO toDTO(Transaction transaction) {
@@ -140,5 +161,9 @@ public class TransactionService {
         transaction.setStatus(TransactionStatus.FAILED);
         transaction.setDescription(reason);
         transactionRepository.save(transaction);
+    }
+
+    public Transaction returnTransactionById(Long id) {
+        return transactionRepository.findById(id).orElseThrow(() -> new RuntimeException("Transaction not found"));
     }
 }

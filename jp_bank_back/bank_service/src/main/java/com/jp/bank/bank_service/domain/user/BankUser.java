@@ -71,6 +71,13 @@ public class BankUser implements UserDetails{
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<BankUserCurrencyBalance> currencies;
 
+    private BigDecimal creditLimit;
+
+    private BigDecimal creditLimitUsed;
+
+    @Column(nullable = true)
+    private Integer creditCardClosingDay;
+
     @PrePersist
     public void onCreate() {
         createdAt = LocalDateTime.now();
@@ -201,6 +208,30 @@ public class BankUser implements UserDetails{
 
     public void setCurrencies(List<BankUserCurrencyBalance> currencies) {
         this.currencies = currencies;
+    }
+
+    public BigDecimal getCreditLimit() {
+        return creditLimit;
+    }
+
+    public void setCreditLimit(BigDecimal creditLimit) {
+        this.creditLimit = creditLimit;
+    }
+
+    public BigDecimal getCreditLimitUsed() {
+        return creditLimitUsed;
+    }
+
+    public void setCreditLimitUsed(BigDecimal creditLimitUsed) {
+        this.creditLimitUsed = creditLimitUsed;
+    }
+
+    public Integer getCreditCardClosingDay() {
+        return creditCardClosingDay;
+    }
+
+    public void setCreditCardClosingDay(Integer creditCardClosingDay) {
+        this.creditCardClosingDay = creditCardClosingDay;
     }
 
     @Override

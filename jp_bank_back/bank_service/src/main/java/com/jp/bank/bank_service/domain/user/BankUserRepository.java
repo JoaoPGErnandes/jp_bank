@@ -1,5 +1,7 @@
 package com.jp.bank.bank_service.domain.user;
 
+import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -17,4 +19,6 @@ public interface BankUserRepository extends JpaRepository<BankUser, Long>{
     Optional<BankUser> findByAccountNumber(String accountNumber);
 
     Optional<BankUser> findByAgencyNumberAndAccountNumber(String agencyNumber, String accountNumber);
+
+    List<BankUser> findByCreditLimitGreaterThan(BigDecimal limit);
 }

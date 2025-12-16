@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.jp.bank.bank_service.domain.transactions.dto.CreateTransactionDTO;
 import com.jp.bank.bank_service.domain.transactions.dto.TransactionResponseDTO;
+import com.jp.bank.bank_service.domain.transactions.dto.UserTransactionResponseDTO;
 
 @RestController
 @RequestMapping("/api/transactions")
@@ -35,7 +36,7 @@ public class TransactionController {
     }
 
     @GetMapping("/user/{userId}")
-    public ResponseEntity<List<TransactionResponseDTO>> getByUser(@PathVariable Long userId) {
+    public ResponseEntity<List<UserTransactionResponseDTO>> getByUser(@PathVariable Long userId) {
         return ResponseEntity.ok(transactionService.getByUser(userId));
     }
 }

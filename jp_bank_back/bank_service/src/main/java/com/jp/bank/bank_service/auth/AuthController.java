@@ -3,7 +3,6 @@ package com.jp.bank.bank_service.auth;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -47,8 +46,4 @@ public class AuthController {
         return ResponseEntity.ok().build();
     }
 
-    @GetMapping("/hello")
-    public String hello() {
-        return "Hello";
-    }
 }

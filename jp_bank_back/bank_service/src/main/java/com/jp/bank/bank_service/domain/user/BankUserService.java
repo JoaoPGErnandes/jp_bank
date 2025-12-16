@@ -51,6 +51,9 @@ public class BankUserService {
         user.setBalance(BigDecimal.ZERO);
         user.setStatus("ACTIVE");
         user.setRole(BankUserRole.USER);
+        user.setCreditLimit(BigDecimal.ZERO);
+        user.setCreditLimitUsed(BigDecimal.ZERO);
+        user.setCreditCardClosingDay(null);
 
         BankUser saved = bankUserRepository.save(user);
         return toResponse(saved);
@@ -142,5 +145,32 @@ public class BankUserService {
         boolean match = passwordEncoder.matches(data.password(), user.getPassword());
 
         return match;
+    }
+
+    public void setBankUserCreditCardClosingDay(BankUser user, int closingDay) {
+        user.setCreditCardClosingDay(closingDay);
+        bankUserRepository.save(user);
+    }
+
+    public void generateBankUserCreditLimit(BankUser user) {
+        if (user.getCreditLimit() == null || user.getCreditLimit().compareTo(BigDecimal.ZERO) == 0) {
+            user.setCreditLimit(new BigDecimal("1000"));
+            user.setCreditLimitUsed(BigDecimal.ZERO);
+            bankUserRepository.save(user);
+        }
+    }
+
+    public void addBankUserCreditLimitUsed(BankUser user, BigDecimal creditUsed) {
+        user.setCreditLimitUsed(user.getCreditLimitUsed().add(creditUsed));
+        bankUserRepository.save(user);
+    }
+
+    public void subtractbankUserCreditLimitused(BankUser user, BigDecimal creditPaid) {
+        user.setCreditLimitUsed(user.getCreditLimitUsed().subtract(creditPaid));
+        bankUserRepository.save(user);
+    }
+
+    public List<BankUser> findAllUsersWithCreditCard() {
+        return bankUserRepository.findByCreditLimitGreaterThan(BigDecimal.ZERO);
     }
 }
